@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛒 Next.js Ecommerce with Admin Panel
 
-## Getting Started
+Fullstack Ecommerce web app built with **Next.js 14 (App Router)**, **Prisma**, **PostgreSQL**, and **Shadcn UI**.  
+This project is built for portfolio purposes to demonstrate **authentication**, **authorization**, **server actions**, and an **Admin Panel** with **Demo Mode**.
 
-First, run the development server:
+---
+
+## ✨ Features
+
+### 👤 User
+
+- Browse products
+- Add to cart
+- Checkout with shipping address & notes
+- Order confirmation page
+
+### 🔐 Admin Panel
+
+- Manage products (CRUD)
+- Manage orders & update status
+- Dashboard with analytics
+- **Demo Admin Account** (readonly)
+
+### ⚙️ Tech Stack
+
+- [Next.js 15](https://nextjs.org/) – App Router, Server Components, Server Actions
+- [Prisma](https://www.prisma.io/) – ORM
+- [PostgreSQL](https://www.postgresql.org/) – Database
+- [JWT jose](https://www.npmjs.com/package/jose) – Authentication
+- [Shadcn/UI](https://ui.shadcn.com/) – UI components
+- [Sonner](https://sonner.emilkowal.ski/) – Toast notifications
+- [Vercel](https://vercel.com/) – Deployment
+
+---
+
+## 🚀 Demo
+
+<!-- 🌐 [Live Demo](https://your-demo-url.com) -->
+
+**Demo Accounts:**
+
+- 👤 User:  
+  Email: `user@demo.com`  
+  Password: `demo123`
+
+- 🔑 Admin (readonly):  
+  Email: `admin@demo.com`  
+  Password: `demo@1234`
+
+ℹ️ _Admin demo mode prevents destructive actions (e.g., delete/update won’t affect real data)._
+
+---
+
+## 🛠️ Installation
+
+Clone the repo and install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/viergi/eco-shop-nextjs.git
+cd eco-shop-nextjs
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Setup environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+DATABASE_URL="postgresql://..."
+NEXTAUTH_SECRET="your-secret"
+NEXTAUTH_URL="http://localhost:3000"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Start the dev server:
 
-## Learn More
+```
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+📂 Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+ ├─ app/             # Next.js App Router
+ │   ├─ (customer)   # Public pages
+ │   ├─ (auth)       # Auth pages
+ │   ├─ admin        # Admin panel
+ │   ├─ api/         # API routes
+ ├─ components/      # UI components (Shadcn UI)
+ ├─ lib/             # Utils, db, auth
+ ├─ prisma/          # Prisma schema & seeds
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+📸 Screenshots
 
-## Deploy on Vercel
+User Storefront
+![Storefront](./public/store-front.png)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Admin Dashboard
+![Storefront](./public/admin-dashboard.png)

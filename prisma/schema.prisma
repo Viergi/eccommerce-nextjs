@@ -1,0 +1,190 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// generator client {
+//   provider = "prisma-client-js"
+//   // output   = "../src/generated/prisma"
+// }
+
+// datasource db {
+//   provider = "mysql"
+//   url      = env("DATABASE_URL")
+// }
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement()) @map("id")
+  email        String   @unique
+  nomorTelepon String   @map("nomor_telepon")
+  fullname     String   @map("full_name")
+  username     String   @unique @map("username")
+  passwordHash String   @map("password_hash") // Sebaiknya simpan HASH password, bukan plaintext
+  level        String   @default("None") @map("level") // SuperAdmin | Admin | None 
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admin") // Nama tabel di database
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  nomorTelepon String   @unique @map("nomor_telepon")
+  address      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relasi: User memiliki banyak Order dan CartItem
+  orders    Order[]
+  cartItems CartItem[]
+  Review    Review[]
+
+  @@map("users") // Nama tabel di database akan menjadi 'users'
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String? // '?' berarti opsional (nullable)
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relasi: Category memiliki banyak Product
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String  @id @default(uuid())
+  name        String
+  description String  @db.Text // Tipe data teks panjang
+  price       Int
+  stock       Int     @default(0)
+  imageUrl    String? @map("image_url") // '?' berarti opsional (nullable)
+
+  // Relasi ke Category
+  categoryId Int?      @map("category_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  status    String
+
+  // Relasi: Product dapat ada di banyak CartItem dan OrderItem
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  review     Review[]
+
+  @@map("products")
+}
+
+model CartItem {
+  id String @id @default(uuid())
+
+  // Relasi ke User
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Relasi ke Product
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Compound unique key: satu user hanya bisa punya satu entri untuk satu produk di keranjang
+  @@unique([userId, productId])
+  @@map("cart_items")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  DELIVERED
+  SHIPPED
+  CANCELLED
+}
+
+model Order {
+  id String @id @default(uuid())
+
+  // Relasi ke User
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  orderDate       DateTime    @default(now()) @map("order_date")
+  totalAmount     Int         @map("total_amount")
+  status          OrderStatus @default(PENDING) // e.g., "pending", "shipped", "delivered"
+  shippingAddress String      @map("shipping_address") @db.Text // Alamat pengiriman lengkap
+  paymentMethod   String?     @map("method_payment")
+  notes           String?     @map("note") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relasi: Order memiliki banyak OrderItem
+  orderItems OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id String @id @default(uuid())
+
+  // Relasi ke Order
+  orderId String @map("order_id")
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Relasi ke Product
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity     Int
+  priceAtOrder Int @map("price_at_order")
+
+  @@map("order_items")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int // 1-5 bintang
+  comment   String?
+  imageUrl  String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("update_at")
+
+  @@map("review")
+}
+
+model Banner {
+  id        String   @id @default(uuid())
+  title     String
+  subtitle  String
+  link      String
+  imageUrl  String
+  status    Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("banner")
+}
