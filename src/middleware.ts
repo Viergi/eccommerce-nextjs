@@ -92,7 +92,7 @@ export async function middleware(request: NextRequest) {
   else {
     // Jika bukan API, asumsikan ini halaman web
     const sessionCookie = (await cookies()).get("session")?.value;
-    // console.log(sessionCookie, "session");
+    console.log(sessionCookie, "session");
 
     if (sessionCookie) {
       if (AUTH_PATH_USER.includes(pathname)) {
@@ -111,6 +111,9 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
       }
       // Jika tidak ada cookie, redirect ke halaman login
+      if (pathname.startsWith("/admin")) {
+        return NextResponse.redirect(new URL("/admin/login", request.url));
+      }
       return NextResponse.redirect(new URL("/login", request.url));
     }
 

@@ -37,7 +37,7 @@ export async function createUser(data: FormRegisterValues) {
   // 3. Insert the user into the database or call an Library API
   const user = await prisma.user.create({
     data: {
-      username: username.toLowerCase(),
+      username: username.toLowerCase().trim(),
       email,
       passwordHash: hashedPassword,
       nomorTelepon: nomorTelepon,

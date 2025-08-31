@@ -192,7 +192,14 @@ export default async function page({
               <CardFooter className="flex gap-4">
                 <UpdateStatusModal status={order.status} id={order.id} />
                 {/* <Button>Ubah Status</Button> */}
-                <Button variant="outline">Cetak Faktur</Button>
+                {order.status != "PENDING" && order.status != "CANCELLED" && (
+                  <Link
+                    href={`/admin/orders/${orderId}/invoice`}
+                    target="_blank"
+                  >
+                    <Button variant="outline">Cetak Faktur</Button>
+                  </Link>
+                )}
               </CardFooter>
             </Card>
           </div>
