@@ -1,6 +1,17 @@
-import { ReviewFormValues } from "@/components/Form/ReviewForm";
 import { prisma } from "../prismaClient";
-import { reviewSchema, updateReviewSchema } from "../zodSchema";
+import { backendReviewSchema, backendUpdateReviewSchema } from "../zodSchema";
+import z from "zod";
+
+import { v2 as cloudinary } from "cloudinary";
+
+// Konfigurasi Cloudinary dari environment variables
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+type backendReviewValues = z.infer<typeof backendReviewSchema>;
 
 export async function createReviews({
   data,
@@ -9,11 +20,11 @@ export async function createReviews({
 }: {
   productId: string;
   userId: string;
-  data: ReviewFormValues;
+  data: backendReviewValues;
 }) {
-  const { comment, rating } = data;
+  const { comment, rating, image } = data;
 
-  const validationResult = reviewSchema.safeParse(data);
+  const validationResult = backendReviewSchema.safeParse(data);
 
   if (!validationResult.success) {
     const messages = validationResult.error.issues.reduce((acc, err) => {
@@ -59,31 +70,59 @@ export async function createReviews({
     return { errors: "User have reviewed this product", status: 400 };
   }
 
-  // 3. Jika semua validasi lolos, buat ulasan baru
-  const newReview = await prisma.review.create({
-    data: {
-      userId: userId,
-      productId: productId,
-      rating: rating,
-      comment: comment,
-    },
+  let newReview = null;
+  const listImages = image?.map((item) => {
+    const publicId = item.split("/").pop()?.split(".")[0];
+    return {
+      url: item,
+      publicId: publicId,
+    };
   });
+
+  if (listImages) {
+    // 3. Jika semua validasi lolos, buat ulasan baru
+    newReview = await prisma.review.create({
+      data: {
+        userId: userId,
+        productId: productId,
+        rating: rating,
+        comment: comment,
+        ImageReview: {
+          createMany: {
+            data: listImages,
+          },
+        },
+      },
+    });
+  } else {
+    newReview = await prisma.review.create({
+      data: {
+        userId: userId,
+        productId: productId,
+        rating: rating,
+        comment: comment,
+      },
+    });
+  }
 
   if (!newReview) return { errors: "Failed create reviews", status: 500 };
   return { data: newReview, status: 200 };
 }
 
+export type backendUpdateReviewFormValues = z.infer<
+  typeof backendUpdateReviewSchema
+>;
 export async function updateReview({
   data,
   id,
   userId,
 }: {
-  data: ReviewFormValues;
+  data: backendUpdateReviewFormValues;
   id: string;
   userId: string;
 }) {
-  const { comment, rating } = data;
-  const validationResult = updateReviewSchema.safeParse(data);
+  const { comment, rating, newImages, deletedImages } = data;
+  const validationResult = backendUpdateReviewSchema.safeParse(data);
 
   if (!validationResult.success) {
     const messages = validationResult.error.issues.reduce((acc, err) => {
@@ -120,20 +159,78 @@ export async function updateReview({
 
   if (isMoreThanThirtyDays)
     return { errors: "Comments are 30 days old", status: 400 };
+  try {
+    const transactionResult = await prisma.$transaction(async (prisma) => {
+      const review = await prisma.review.update({
+        where: { id, userId },
+        data: { comment, rating },
+      });
 
-  const review = await prisma.review.update({
-    where: {
-      id,
-      userId,
-    },
-    data: {
-      comment,
-      rating,
-    },
+      if (deletedImages != undefined && deletedImages.length > 0) {
+        const cloudinaryPublicIds = deletedImages.map((imageUrl) => {
+          const lastSegment = imageUrl.split("/").pop();
+          return lastSegment ? lastSegment.split(".")[0] : "";
+        });
+
+        await Promise.all(
+          cloudinaryPublicIds.map((publicId) =>
+            cloudinary.uploader.destroy(`eco_shop/${publicId}`)
+          )
+        );
+
+        // Hapus dari database (gunakan publicId)
+        await prisma.imageReview.deleteMany({
+          where: {
+            publicId: {
+              in: cloudinaryPublicIds,
+            },
+          },
+        });
+      }
+
+      if (newImages != undefined && newImages.length > 0) {
+        const newImageRecords = newImages.map((imageUrl) => {
+          const lastSegment = imageUrl.split("/").pop();
+          const publicId = lastSegment ? lastSegment.split(".")[0] : "";
+
+          return {
+            url: imageUrl,
+            reviewId: review.id,
+            publicId: publicId,
+          };
+        });
+
+        await prisma.imageReview.createMany({
+          data: newImageRecords,
+        });
+      }
+
+      return review;
+    });
+
+    return { data: transactionResult, status: 200 };
+  } catch (error) {
+    return { errors: error, status: 500 };
+  }
+}
+
+export async function updateImage(idDeleteImage: string[]) {
+  // TODO: Image edit
+  idDeleteImage.forEach(async (imageUrl) => {
+    // Extract public ID from the image URL
+    const lastSegment = imageUrl.split("/").pop();
+    const publicId = lastSegment ? lastSegment.split(".")[0] : "";
+
+    console.log(publicId);
+
+    // Delete image from Cloudinary
+    await cloudinary.uploader.destroy(`eco_shop/${publicId}`);
+    await prisma.imageReview.delete({
+      where: {
+        publicId,
+      },
+    });
   });
-
-  if (!review) return { errors: "Change data failed", status: 500 };
-  return { data: review, status: 200 };
 }
 
 export async function deleteReview({

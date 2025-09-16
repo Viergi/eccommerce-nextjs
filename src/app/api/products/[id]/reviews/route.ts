@@ -2,16 +2,24 @@ import {
   createReviews,
   deleteReview,
   updateReview,
+  // updateReview,
 } from "@/lib/reviews/mutation";
 import { getReviewProductByProductId } from "@/lib/reviews/queries";
 import { NextResponse } from "next/server";
 
+// TODO kasih pagination disini
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const response = await getReviewProductByProductId(id);
+
+  // FIXME
+  const response = await getReviewProductByProductId({
+    productId: id,
+    skip: 5,
+    take: 10,
+  });
 
   if (response.errors)
     return NextResponse.json(
@@ -52,6 +60,7 @@ export async function POST(
   );
 }
 
+// ! sabar
 export async function PUT(request: Request) {
   const userId = request.headers.get("X-User-Id");
   if (!userId) {

@@ -162,18 +162,28 @@ model OrderItem {
 }
 
 model Review {
-  id        String   @id @default(uuid())
-  rating    Int // 1-5 bintang
-  comment   String?
-  imageUrl  String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("update_at")
+  id          String        @id @default(uuid())
+  rating      Int // 1-5 bintang
+  comment     String?
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  productId   String
+  product     Product       @relation(fields: [productId], references: [id])
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("update_at")
+  ImageReview ImageReview[]
 
   @@map("review")
+}
+
+model ImageReview {
+  id       Int     @id @default(autoincrement())
+  url      String
+  publicId String? @unique
+  review   Review  @relation(fields: [reviewId], references: [id])
+  reviewId String
+
+  @@map("image_review")
 }
 
 model Banner {

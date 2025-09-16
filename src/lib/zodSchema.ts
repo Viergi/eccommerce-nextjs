@@ -147,6 +147,7 @@ const ACCEPTED_IMAGE_TYPES = [
   "image/png",
   "image/webp",
 ];
+const MAX_FILE_COUNT = 3;
 
 export const baseProductSchema = z.object({
   name: z
@@ -271,7 +272,7 @@ export const updateOrderStatusSchema = z.object({
   // }),
 });
 
-export const reviewSchema = z.object({
+export const baseReviewSchema = z.object({
   rating: z
     .number()
     .int()
@@ -280,7 +281,44 @@ export const reviewSchema = z.object({
   comment: z.string().max(500, { message: "Ulasan maksimal 500 karakter." }),
 });
 
-export const updateReviewSchema = reviewSchema.partial();
+const fileSchema = z
+  .instanceof(File)
+  .refine((file) => file.size <= MAX_FILE_SIZE, `Ukuran gambar maksimal 5MB.`)
+  .refine(
+    (file) => ACCEPTED_IMAGE_TYPES.includes(file.type),
+    "Hanya format .jpg, .jpeg, .png, dan .webp yang didukung."
+  );
+
+export const frontEndReviewSchema = baseReviewSchema.extend({
+  image: z
+    .custom<FileList>()
+    .refine((files) => files.length > 0, "Pilih setidaknya satu gambar.")
+    .refine(
+      (files) => files.length <= MAX_FILE_COUNT,
+      `Maksimal ${MAX_FILE_COUNT} gambar yang bisa diunggah.`
+    )
+    .refine((files) => {
+      // Validasi setiap file dalam FileList
+      for (const file of Array.from(files)) {
+        if (!fileSchema.safeParse(file).success) {
+          return false;
+        }
+      }
+      return true;
+    }, "File tidak valid (Ukuran gambar maksimal 5MB. atau Hanya format .jpg, .jpeg, .png, dan .webp yang didukung.)."),
+});
+
+export const backendReviewSchema = baseReviewSchema.extend({
+  image: z.array(z.url({ error: "URL not valid" })).optional(),
+});
+
+export const frontendUpdateReviewSchema = baseReviewSchema.partial();
+
+// FIXME : change validation
+export const backendUpdateReviewSchema = baseReviewSchema.extend({
+  newImages: z.array(z.url({ error: "URL not valid" })).optional(),
+  deletedImages: z.array(z.url({ error: "URL not valid" })).optional(),
+});
 
 export const baseBannerSchema = z.object({
   title: z

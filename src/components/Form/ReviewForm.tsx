@@ -19,17 +19,22 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Star } from "lucide-react";
-import { reviewSchema } from "@/lib/zodSchema";
+import { PlusCircle, Star } from "lucide-react";
+import { frontEndReviewSchema } from "@/lib/zodSchema";
 import { useRouter } from "next/navigation";
 import { useAuthToken } from "@/lib/authHook";
 import { toast } from "sonner";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import Image from "next/image";
+import { ChangeEvent, useState } from "react";
 
-export type ReviewFormValues = z.infer<typeof reviewSchema>;
+export type ReviewFormValues = z.infer<typeof frontEndReviewSchema>;
 
 export default function ReviewForm({ productId }: { productId: string }) {
   const form = useForm<ReviewFormValues>({
-    resolver: zodResolver(reviewSchema),
+    // mode: "onChange",
+    resolver: zodResolver(frontEndReviewSchema),
     defaultValues: {
       rating: 0,
       comment: "",
@@ -38,16 +43,55 @@ export default function ReviewForm({ productId }: { productId: string }) {
   const router = useRouter();
   const { token } = useAuthToken();
 
-  const onSubmit = async (data: ReviewFormValues) => {
-    console.log(productId, String(data.rating), data.comment);
-    console.log(data, "ini");
+  const onSubmit = async ({ rating, comment, image }: ReviewFormValues) => {
+    // console.log(productId, String(rating), comment);
+    console.log({ rating, comment, image }, "ini");
+
+    const files = (image as unknown as FileList) || null;
+    const fileArray = Array.from(files);
+    let uploadedImageUrl: string[] | null = null;
+    console.log(fileArray);
+    if (files) {
+      const formData = new FormData();
+      fileArray.forEach((file) => {
+        formData.append("image", file);
+      });
+
+      try {
+        const uploadResponse = await fetch("/api/products/images/upload", {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || "Gagal mengunggah gambar.");
+        }
+
+        const uploadResult = await uploadResponse.json();
+        uploadedImageUrl = uploadResult.imageUrl.map(
+          (item: { url: string }) => item.url
+        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
+        toast.error(`Gagal upload gambar`, err);
+        return;
+      }
+    }
+
+    const reviewData = {
+      comment,
+      rating,
+      image: uploadedImageUrl, // Gunakan URL gambar yang sudah diunggah
+    };
+
     toast.promise(
       fetch(`/api/products/${productId}/reviews`, {
         method: "POST",
-        body: JSON.stringify({
-          comment: data.comment,
-          rating: data.rating,
-        }),
+        body: JSON.stringify(reviewData),
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -68,6 +112,39 @@ export default function ReviewForm({ productId }: { productId: string }) {
       }
     );
     router.refresh();
+  };
+
+  const [previews, setPreviews] = useState<string[]>([]);
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    const newPreviews: string[] = [];
+
+    if (!files) return;
+
+    // Jika tidak ada file yang dipilih, set previews ke array kosong
+    if (files.length === 0) {
+      setPreviews([]);
+      return;
+    }
+
+    // Iterasi setiap file yang dipilih
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        // Saat pembacaan selesai, tambahkan Data URL ke array previews
+        newPreviews.push(reader.result as string);
+        if (newPreviews.length === files.length) {
+          // Setelah semua file diproses, perbarui state
+          setPreviews(newPreviews);
+        }
+      };
+
+      // Baca file sebagai Data URL
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -115,7 +192,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
                 <FormItem>
                   <FormLabel>Ulasan</FormLabel>
                   <FormControl>
-                    <textarea
+                    <Textarea
                       placeholder="Tulis ulasan Anda di sini..."
                       className="resize-none px-2 py-1"
                       {...field}
@@ -126,6 +203,65 @@ export default function ReviewForm({ productId }: { productId: string }) {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="image"
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              render={({ field: { value, onChange, ...fieldProps } }) => (
+                <FormItem>
+                  <FormLabel className="w-fit p-2 cursor-pointer">
+                    <span>Add Image</span>
+                    <PlusCircle></PlusCircle>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      multiple
+                      accept="image/**"
+                      onChange={(event) => {
+                        handleFileChange(event);
+                        onChange(event.target.files);
+                      }}
+                      placeholder="Tulis ulasan Anda di sini..."
+                      className="hidden"
+                      {...fieldProps}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Tampilkan pratinjau gambar */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "10px",
+                marginTop: "20px",
+              }}
+            >
+              {previews.length > 0 ? (
+                previews.map((previewUrl, index) => (
+                  <Image
+                    unoptimized
+                    key={index}
+                    src={previewUrl}
+                    width={100}
+                    height={100}
+                    alt={`Preview ${index + 1}`}
+                    style={{
+                      width: "100px",
+                      height: "100px",
+                      objectFit: "cover",
+                    }}
+                  />
+                ))
+              ) : (
+                <p>Pilih gambar untuk melihat pratinjau.</p>
+              )}
+            </div>
+            {/* <ImagePreviewer></ImagePreviewer> */}
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "Mengirim..." : "Kirim Ulasan"}
             </Button>
