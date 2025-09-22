@@ -9,6 +9,8 @@ const createInvoiceSchema = z.object({
   orderId: z.uuid("ID pesanan tidak valid."),
 });
 
+const WEB_URL = process.env.WEB_URL;
+
 export async function POST(request: Request) {
   const userId = request.headers.get("X-User-Id");
   if (!userId) {
@@ -102,8 +104,8 @@ export async function POST(request: Request) {
       email: order.user.email,
     },
     currency: "IDR",
-    successRedirectUrl: `http://localhost:3000/order/konfirmasi/${orderId}`,
-    failureRedirectUrl: "http://localhost:3000/checkout",
+    successRedirectUrl: `${WEB_URL}/order/konfirmasi/${orderId}`,
+    failureRedirectUrl: `${WEB_URL}/checkout`,
     fees: [{ type: "Delivery", value: 25000 }],
   };
 
